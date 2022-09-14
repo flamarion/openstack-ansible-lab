@@ -41,11 +41,19 @@
   ansible.builtin.command: "keystone-manage db_sync"
   become: true
   become_user: keystone
-  become_method: su
-  become_flags: '-s /bin/sh'
+  become_method: sudo
+  become_flags: 'su - keystone -s /bin/sh -c'
   args:
     creates: /etc/keystone/keystone_db_synced
   register: keystone_bootstrap
+
+- name: Create lock file after db sync
+  ansible.builtin.file:
+    path: /etc/keystone/keystone_db_synced
+    state: touch
+    owner: keystone
+    mode: 0644
+  when: keystone_bootstrap is succeeded
 
 - name: Create fernet keys
   ansible.builtin.command: "{{ item }}"
@@ -54,18 +62,36 @@
     - "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
   args:
     creates: /etc/keystone/fernet_keys_created
+  register: fernet_keys_configured
+
+- name: Create lock file after fernet keys configured
+  ansible.builtin.file:
+    path: /etc/keystone/fernet_keys_created
+    state: touch
+    owner: keystone
+    mode: 0644
+  when: fernet_keys_configured is succeeded
 
 - name: Bootstrap keyston
-  ansible.builtin.command:
-    argv:
-      - "keystone-manage bootstrap --bootstrap-password {{ admin_password }} "
-      - "--bootstrap-admin-url http://controller:5000/v3/"
-      - "--bootstrap-internal-url http://controller:5000/v3/"
-      - "--bootstrap-public-url http://controller:5000/v3/"
-      - "--bootstrap-region-id RegionOne"
+  ansible.builtin.command: >
+    keystone-manage bootstrap --bootstrap-password {{ admin_pass }}
+    --bootstrap-admin-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-internal-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-public-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-region-id RegionOne
+  args:
     creates: /etc/keystone/keystone_bootstraped
   notify:
     - Restart apache2
+  register: openstack_bootstraped
+
+- name: Create lock file after openstack bootstraped
+  ansible.builtin.file:
+    path: /etc/keystone/keystone_bootstraped
+    state: touch
+    owner: keystone
+    mode: 0644
+  when: openstack_bootstraped is succeeded
 
 - name: Creates openrc file
   ansible.builtin.template:

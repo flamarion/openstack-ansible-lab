@@ -1,0 +1,24 @@
+# Mysql
+- name: Install Mariadb
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  with_items:
+    - mariadb-server
+    - python3-pymysql
+- name: Deploy Mariadb Openstack configuration
+  ansible.builtin.template:
+    src: 99-openstack.cnf.j2
+    dest: /etc/mysql/mariadb.conf.d/99-openstack.cnf
+    owner: root
+    group: root
+    mode: 0644
+    backup: true
+  notify:
+    - Restart mariadb
+- name: Ensure mariadb is running
+  ansible.builtin.systemd:
+    name: mariadb
+    state: started
+    enabled: true

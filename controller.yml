@@ -26,71 +26,6 @@
       name: chronyd
       state: started
       enabled: true
-  # Mysql
-  - name: Install Mariadb
-    ansible.builtin.apt:
-      name: "{{ item }}"
-      state: present
-      update_cache: true
-    with_items:
-      - mariadb-server
-      - python3-pymysql
-  - name: Deploy Mariadb Openstack configuration
-    ansible.builtin.template:
-      src: templates/controllers/99-openstack.cnf.j2
-      dest: /etc/mysql/mariadb.conf.d/99-openstack.cnf
-      owner: root
-      group: root
-      mode: 0644
-      backup: true
-    notify:
-      - Restart mariadb
-  - name: Ensure mariadb is running
-    ansible.builtin.systemd:
-      name: mariadb
-      state: started
-      enabled: true
-  # RabbitMQ
-  - name: Install RabbitMQ
-    ansible.builtin.apt:
-      name: rabbitmq-server
-      state: present
-      update_cache: true
-    register: rabbitmq_installed
-  - name: Ensure rabbitmq is running
-    ansible.builtin.systemd:
-      name: rabbitmq-server
-      state: started
-  - name: Add openstack user to rabbitmq
-    community.rabbitmq.rabbitmq_user:
-      user: "{{ openstack_user }}"
-      password: "{{ admin_pass }}"
-      vhost: /
-      configure_priv: .*
-      read_priv: .*
-      write_priv: .*
-      state: present
-    when: rabbitmq_installed is succeeded
-  # Memcached
-  - name: Install Memcached
-    ansible.builtin.apt:
-      name: "{{ item }}"
-      state: present
-      update_cache: true
-    loop:
-      - memcached
-      - python3-memcache
-  - name: Configure memcached
-    ansible.builtin.lineinfile:
-      path: /etc/memcached.conf
-      regexp: "^-l.*"
-      line: "-l {{ hostvars[groups['controllers'][0]]['ansible_default_ipv4']['address'] }}"
-    notify:
-      - Restart memcached
-  - name: Ensure memcached is running
-    ansible.builtin.systemd:
-      name: memcached
-      state: started
 
   handlers:
     - name: Restart chrony
@@ -98,15 +33,8 @@
         name: chronyd
         state: restarted
 
-    - name: Restart mariadb
-      ansible.builtin.systemd:
-        name: mariadb
-        state: restarted
-
-    - name: Restart memcached
-      ansible.builtin.systemd:
-        name: memcached
-        state: restarted
-
   roles:
+    - mysql
+    - rabbitmq
+    - memcached
     - keystone
