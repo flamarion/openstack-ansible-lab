@@ -22,13 +22,8 @@
         path: /etc/systemd/logind.conf
         regexp: "^#HandleLidSwitch=suspend|^HandleLidSwitch=.*"
         line: "HandleLidSwitch=ignore"
-      register: logind_config
-
-    - name: Restart logind service
-      ansible.builtin.systemd:
-        name: systemd-logind
-        state: restarted
-      when: logind_config.changed
+      notify:
+        - Restart logind
 
     - name: Disable useless services
       ansible.builtin.systemd:
@@ -53,7 +48,7 @@
       ansible.builtin.apt:
         name: ubuntu-cloud-keyring
         state: present
-        update_cache: yes
+        update_cache: true
       register: keyring_installed
 
     - name: Cloud Archive Openstack - Ubuntu
@@ -62,8 +57,14 @@
         state: present
       when: keyring_installed is succeeded
 
-    - name: Starting controllers setup
-      ansible.builtin.import_playbook: controller.yml
+  handlers:
+    - name: Restart logind
+      ansible.builtin.systemd:
+        name: systemd-logind
+        state: restarted
 
-    - name: Starting computes setup
-      ansible.builtin.import_playbook: compute.yml
+- name: Starting controllers setup
+  ansible.builtin.import_playbook: controller.yml
+
+- name: Starting computes setup
+  ansible.builtin.import_playbook: compute.yml
