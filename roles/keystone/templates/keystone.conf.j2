@@ -1,0 +1,5 @@
+[database]
+connection = mysql+pymysql://keystone:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_facts']['ansible_hostname'] }}/keystone
+
+[token]
+provider = fernet

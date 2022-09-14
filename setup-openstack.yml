@@ -1,8 +1,8 @@
 ---
 - name: Common tasks
   hosts: all
-  become: yes
-  gather_facts: yes
+  become: true
+  gather_facts: true
 
   tasks:
     - name: Set timezone to Europe/Amsterdam
@@ -52,7 +52,7 @@
     - name: Install Ubuntu Cloud Keyring
       ansible.builtin.apt:
         name: ubuntu-cloud-keyring
-        state: latest
+        state: present
         update_cache: yes
       register: keyring_installed
 
@@ -62,5 +62,8 @@
         state: present
       when: keyring_installed is succeeded
 
-- import_playbook: controller.yml
-- import_playbook: compute.yml
+    - name: Starting controllers setup
+      ansible.builtin.import_playbook: controller.yml
+
+    - name: Starting computes setup
+      ansible.builtin.import_playbook: compute.yml

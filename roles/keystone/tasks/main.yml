@@ -1,0 +1,71 @@
+- name: Create keystone database
+  community.mysql.mysql_db:
+    name: keystone
+    state: present
+  register: keystonedb_created
+
+- name: Create keystone db user
+  community.mysql.mysql_user:
+    state: present
+    name: keystone
+    password: "{{ admin_password }}"
+    priv:
+      "keystone.*": "ALL,GRANT"
+  register: keystone_user_grant
+
+- name: Update keystone user access
+  community.mysql.mysql_user:
+    state: present
+    name: keystone
+    host_all: true
+  when: keystone_user_grant is succeeded
+
+- name: Install keystone
+  ansible.builtin.apt:
+    name: keystone
+    state: present
+    update_cache: true
+  register: keystone_installed
+
+- name: Keystone configuration
+  ansible.builtin.tempfile:
+    src: keystone.conf.j2
+    dest: /etc/keystone/keystone.conf
+  register: keystone_config
+  when: keystone_installed is succeeded
+
+- name: Perform a Keystone DB sync
+  ansible.builtin.command: "keystone-manage db_sync"
+  become: true
+  become_user: keystone
+  args:
+    creates: /etc/keystone/keystone_db_synced
+  register: keystone_bootstrap
+
+- name: Create fernet keys
+  ansible.builtin.command: "{{ item }}"
+  with_items:
+    - "keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone"
+    - "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
+  args:
+    creates: /etc/keystone/fernet_keys_created
+
+- name: Bootstrap keyston
+  ansible.builtin.command:
+    argv:
+      - "keystone-manage bootstrap --bootstrap-password {{ admin_password }} "
+      - "--bootstrap-admin-url http://controller:5000/v3/"
+      - "--bootstrap-internal-url http://controller:5000/v3/"
+      - "--bootstrap-public-url http://controller:5000/v3/"
+      - "--bootstrap-region-id RegionOne"
+    creates: /etc/keystone/keystone_bootstraped
+  notify:
+    - Restart apache2
+
+- name: Creates openrc file
+  ansible.builtin.template:
+    src: openrc.j2
+    dest: /root/openrc
+    mode: 0644
+    owner: root
+    group: root

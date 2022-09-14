@@ -1,56 +1,66 @@
 ---
 - name: Controller nodes configuration
   hosts: controllers
-  become: yes
-  gather_facts: yes
+  become: true
+  gather_facts: true
 
   tasks:
+  # Chrony
   - name: Install chrony ntp service
     ansible.builtin.apt:
       name: chrony
-      state: latest
-      update_cache: yes
+      state: present
+      update_cache: true
   - name: Deploy chrony.conf template
     ansible.builtin.template:
       src: templates/controllers/controller-chrony.conf.j2
       dest: /etc/chrony/chrony.conf
-      backup: yes
-    register: chrony_config
-  - name: Restart chrony
+      owner: root
+      group: root
+      mode: 0644
+      backup: true
+    notify:
+      - Restart chrony
+  - name: Ensure chrony is running
     ansible.builtin.systemd:
       name: chronyd
-      state: restarted
-      enabled: yes
-    when: chrony_config.changed
+      state: started
+      enabled: true
   # Mysql
   - name: Install Mariadb
     ansible.builtin.apt:
       name: "{{ item }}"
-      state: latest
-      update_cache: yes
+      state: present
+      update_cache: true
     with_items:
       - mariadb-server
       - python3-pymysql
-    register: mariadb_installed
   - name: Deploy Mariadb Openstack configuration
     ansible.builtin.template:
       src: templates/controllers/99-openstack.cnf.j2
       dest: /etc/mysql/mariadb.conf.d/99-openstack.cnf
-    register: mysql_config
-    when: mariadb_installed is succeeded
-  - name: Restart mariadb
+      owner: root
+      group: root
+      mode: 0644
+      backup: true
+    notify:
+      - Restart mariadb
+  - name: Ensure mariadb is running
     ansible.builtin.systemd:
       name: mariadb
-      state: restarted
-      enabled: yes
-    when: mysql_config.changed
+      state: started
+      enabled: true
   # RabbitMQ
   - name: Install RabbitMQ
     ansible.builtin.apt:
       name: rabbitmq-server
-      state: latest
-      update_cache: yes
+      state: present
+      update_cache: true
     register: rabbitmq_installed
+  - name: Ensure rabbitmq is running
+    ansible.builtin.systemd:
+      name: rabbitmq-server
+      state: started
   - name: Add openstack user to rabbitmq
     community.rabbitmq.rabbitmq_user:
       user: "{{ openstack_user }}"
@@ -65,24 +75,38 @@
   - name: Install Memcached
     ansible.builtin.apt:
       name: "{{ item }}"
-      state: latest
-      update_cache: yes
+      state: present
+      update_cache: true
     loop:
       - memcached
       - python3-memcache
-    register: memcached_installed
   - name: Configure memcached
     ansible.builtin.lineinfile:
       path: /etc/memcached.conf
       regexp: "^-l.*"
       line: "-l {{ hostvars[groups['controllers'][0]]['ansible_default_ipv4']['address'] }}"
-    when: memcached_installed is succeeded
-    register: memcached_configured
-  - name: Restart memcached
+    notify:
+      - Restart memcached
+  - name: Ensure memcached is running
     ansible.builtin.systemd:
       name: memcached
-      state: restarted
-    when: memcached_configured.changed
+      state: started
 
+  handlers:
+    - name: Restart chrony
+      ansible.builtin.systemd:
+        name: chronyd
+        state: restarted
 
-  
+    - name: Restart mariadb
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted
+
+    - name: Restart memcached
+      ansible.builtin.systemd:
+        name: memcached
+        state: restarted
+
+  roles:
+    - keystone
