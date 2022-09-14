@@ -1,0 +1,21 @@
+# RabbitMQ
+- name: Install RabbitMQ
+  ansible.builtin.apt:
+    name: rabbitmq-server
+    state: present
+    update_cache: true
+  register: rabbitmq_installed
+- name: Ensure rabbitmq is running
+  ansible.builtin.systemd:
+    name: rabbitmq-server
+    state: started
+- name: Add openstack user to rabbitmq
+  community.rabbitmq.rabbitmq_user:
+    user: "{{ openstack_user }}"
+    password: "{{ admin_pass }}"
+    vhost: /
+    configure_priv: .*
+    read_priv: .*
+    write_priv: .*
+    state: present
+  when: rabbitmq_installed is succeeded

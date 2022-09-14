@@ -1,0 +1,9 @@
+[controllers]
+control1.lab.local
+
+[computes]
+compute1.lab.local
+
+[all:children]
+controllers
+computes

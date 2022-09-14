@@ -1,0 +1,73 @@
+---
+- name: Common tasks
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Set timezone to Europe/Amsterdam
+      community.general.timezone:
+        name: Europe/Amsterdam
+
+    - name: Configure sudo
+      community.general.sudoers:
+        name: "00-{{ local_admin_user }}-all-nopassword"
+        nopassword: true
+        state: present
+        user: "{{ local_admin_user }}"
+        commands: ALL
+
+    - name: Disable lid close sleep
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/logind.conf
+        regexp: "^#HandleLidSwitch=suspend|^HandleLidSwitch=.*"
+        line: "HandleLidSwitch=ignore"
+      notify:
+        - Restart logind
+
+    - name: Disable useless services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        masked: true
+      loop: "{{ useless_services }}"
+
+    - name: Add IP address of all hosts to all hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }} {{ hostvars[item]['ansible_hostname'] }}"
+        state: present
+      with_items: "{{ groups.all }}"
+
+    - name: Remove loopback address associated with the host
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "^127.0.1.1.*"
+        state: absent
+
+    - name: Installed some required packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      with_items:
+        - acl
+        - ubuntu-cloud-keyring
+      register: keyring_installed
+
+    - name: Cloud Archive Openstack - Ubuntu
+      ansible.builtin.apt_repository:
+        repo: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu {{ ansible_distribution_release }}-updates/{{ openstack_version }} main"
+        state: present
+      when: keyring_installed is succeeded
+
+  handlers:
+    - name: Restart logind
+      ansible.builtin.systemd:
+        name: systemd-logind
+        state: restarted
+
+- name: Starting controllers setup
+  ansible.builtin.import_playbook: controller.yml
+
+- name: Starting computes setup
+  ansible.builtin.import_playbook: compute.yml
