@@ -1,0 +1,33 @@
+---
+- name: Compute nodes configuration
+  hosts: computes
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Install chrony ntp service
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+        update_cache: true
+    - name: Deploy chrony.conf template
+      ansible.builtin.template:
+        src: templates/computes/compute-chrony.conf.j2
+        dest: /etc/chrony/chrony.conf
+        backup: true
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - Restart chrony
+    - name: Ensure chrony is running
+      ansible.builtin.systemd:
+        name: chronyd
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Restart chrony
+      ansible.builtin.systemd:
+        name: chronyd
+        state: restarted

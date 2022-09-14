@@ -1,0 +1,102 @@
+- name: Create keystone database
+  community.mysql.mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: keystone
+    state: present
+  register: keystonedb_created
+
+- name: Create keystone db user
+  community.mysql.mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+    name: keystone
+    host: "{{ item }}"
+    password: "{{ admin_pass }}"
+    priv:
+      "keystone.*": "ALL,GRANT"
+  with_items:
+    - localhost
+    - "{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}"
+    - "{{ groups['controllers'][0] }}"
+  register: keystone_user_grant
+
+- name: Install keystone
+  ansible.builtin.apt:
+    name: keystone
+    state: present
+    update_cache: true
+  register: keystone_installed
+
+- name: Keystone configuration
+  ansible.builtin.template:
+    src: keystone.conf.j2
+    dest: /etc/keystone/keystone.conf
+    mode: 0640
+    owner: keystone
+    group: keystone
+  register: keystone_config
+  when: keystone_installed is succeeded
+
+- name: Perform a Keystone DB sync
+  ansible.builtin.command: "keystone-manage db_sync"
+  become: true
+  become_user: keystone
+  become_method: sudo
+  become_flags: 'su - keystone -s /bin/sh -c'
+  args:
+    creates: /etc/keystone/keystone_db_synced
+  register: keystone_bootstrap
+
+- name: Create lock file after db sync
+  ansible.builtin.file:
+    path: /etc/keystone/keystone_db_synced
+    state: touch
+    owner: keystone
+    mode: 0644
+  when: keystone_bootstrap is succeeded
+
+- name: Create fernet keys
+  ansible.builtin.command: "{{ item }}"
+  with_items:
+    - "keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone"
+    - "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
+  args:
+    creates: /etc/keystone/fernet_keys_created
+  register: fernet_keys_configured
+
+- name: Create lock file after fernet keys configured
+  ansible.builtin.file:
+    path: /etc/keystone/fernet_keys_created
+    state: touch
+    owner: keystone
+    mode: 0644
+  when: fernet_keys_configured is succeeded
+
+- name: Bootstrap keyston
+  ansible.builtin.command: >
+    keystone-manage bootstrap --bootstrap-password {{ admin_pass }}
+    --bootstrap-admin-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-internal-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-public-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-region-id RegionOne
+  args:
+    creates: /etc/keystone/keystone_bootstraped
+  notify:
+    - Restart apache2
+  register: openstack_bootstraped
+
+- name: Create lock file after openstack bootstraped
+  ansible.builtin.file:
+    path: /etc/keystone/keystone_bootstraped
+    state: touch
+    owner: keystone
+    mode: 0644
+  when: openstack_bootstraped is succeeded
+
+- name: Creates openrc file
+  ansible.builtin.template:
+    src: openrc.j2
+    dest: /root/openrc
+    mode: 0644
+    owner: root
+    group: root

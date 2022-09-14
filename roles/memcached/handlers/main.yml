@@ -1,0 +1,4 @@
+- name: Restart memcached
+  ansible.builtin.systemd:
+    name: memcached
+    state: restarted
