@@ -44,11 +44,14 @@
         regexp: "^127.0.1.1.*"
         state: absent
 
-    - name: Install Ubuntu Cloud Keyring
+    - name: Installed some required packages
       ansible.builtin.apt:
-        name: ubuntu-cloud-keyring
+        name: "{{ item }}"
         state: present
         update_cache: true
+      with_items:
+        - acl
+        - ubuntu-cloud-keyring
       register: keyring_installed
 
     - name: Cloud Archive Openstack - Ubuntu
