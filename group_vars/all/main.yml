@@ -6,6 +6,7 @@ useless_services:
   - hibernate.target
   - hybrid-sleep.target
 admin_pass: secret
+op: install
 openstack_user: openstack
 openstack_version: yoga
 openstack_subnet: 192.168.10.0/24

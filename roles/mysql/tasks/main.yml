@@ -2,7 +2,7 @@
 - name: Install Mariadb
   ansible.builtin.apt:
     name: "{{ item }}"
-    state: present
+    state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
   with_items:
     - mariadb-server

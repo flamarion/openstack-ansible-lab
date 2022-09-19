@@ -2,7 +2,7 @@
 - name: Install RabbitMQ
   ansible.builtin.apt:
     name: rabbitmq-server
-    state: present
+    state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
   register: rabbitmq_installed
 - name: Ensure rabbitmq is running

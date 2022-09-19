@@ -23,7 +23,7 @@
 - name: Install keystone
   ansible.builtin.apt:
     name: keystone
-    state: present
+    state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
   register: keystone_installed
 
@@ -50,7 +50,7 @@
 - name: Create lock file after db sync
   ansible.builtin.file:
     path: /etc/keystone/keystone_db_synced
-    state: touch
+    state: file
     owner: keystone
     mode: 0644
   when: keystone_bootstrap is succeeded
@@ -67,7 +67,7 @@
 - name: Create lock file after fernet keys configured
   ansible.builtin.file:
     path: /etc/keystone/fernet_keys_created
-    state: touch
+    state: file
     owner: keystone
     mode: 0644
   when: fernet_keys_configured is succeeded
@@ -88,7 +88,7 @@
 - name: Create lock file after openstack bootstraped
   ansible.builtin.file:
     path: /etc/keystone/keystone_bootstraped
-    state: touch
+    state: file
     owner: keystone
     mode: 0644
   when: openstack_bootstraped is succeeded
