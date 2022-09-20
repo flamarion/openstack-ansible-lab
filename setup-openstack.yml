@@ -4,6 +4,14 @@
   become: true
   gather_facts: true
 
+  pre_tasks:
+    - name: Add IP address of all hosts to all hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}\t{{ item }}\t{{ hostvars[item]['ansible_hostname'] }}"
+        state: present
+      with_items: "{{ groups['all'] }}"
+
   roles:
     - common
 
@@ -18,11 +26,12 @@
     - rabbitmq
     - memcached
     - keystone
+    - glance
 
-# - name: Compute nodes configuration
-#   hosts: computes
-#   become: true
-#   gather_facts: true
+- name: Compute nodes configuration
+  hosts: computes
+  become: true
+  gather_facts: true
 
-#   roles:
-#     - ntp/client
+  roles:
+    - ntp/client

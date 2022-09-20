@@ -1,0 +1,10 @@
+clouds:
+  os-admin:
+    auth:
+      auth_url: http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/
+      project_name: admin
+      username: admin
+      password: {{ admin_pass }}
+      user_domain_name: Default
+      project_domain_name: Default
+    region_name: RegionOne

@@ -50,7 +50,7 @@
 - name: Create lock file after db sync
   ansible.builtin.file:
     path: /etc/keystone/keystone_db_synced
-    state: file
+    state: touch
     owner: keystone
     mode: 0644
   when: keystone_bootstrap is succeeded
@@ -67,7 +67,7 @@
 - name: Create lock file after fernet keys configured
   ansible.builtin.file:
     path: /etc/keystone/fernet_keys_created
-    state: file
+    state: touch
     owner: keystone
     mode: 0644
   when: fernet_keys_configured is succeeded
@@ -88,7 +88,7 @@
 - name: Create lock file after openstack bootstraped
   ansible.builtin.file:
     path: /etc/keystone/keystone_bootstraped
-    state: file
+    state: touch
     owner: keystone
     mode: 0644
   when: openstack_bootstraped is succeeded
@@ -100,3 +100,31 @@
     mode: 0644
     owner: root
     group: root
+
+- name: Create openstack dir
+  ansible.builtin.file:
+    path: /etc/openstack
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  register: openstack_dir
+
+- name: Create clouds.yaml with Admin creds
+  ansible.builtin.template:
+    src: clouds.yaml.j2
+    dest: /etc/openstack/clouds.yaml
+    owner: root
+    group: root
+    mode: 0666
+  when: openstack_dir is succeeded
+  register: clouds_yaml
+
+- name: Create service project
+  openstack.cloud.project:
+    cloud: os-admin
+    state: present
+    name: service
+    description: Service project
+    domain_id: default
+    enabled: true

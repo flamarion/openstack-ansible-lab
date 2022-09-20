@@ -1,0 +1,21 @@
+[database]
+connection = mysql+pymysql://glance:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}/glance
+
+[keystone_authtoken]
+www_authenticate_uri = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000
+auth_url = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000
+memcached_servers = {{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:11211
+auth_type = password
+project_domain_name = Default
+user_domain_name = Default
+project_name = service
+username = glance
+password = {{ admin_pass }}
+
+[paste_deploy]
+flavor = keystone
+
+[glance_store]
+stores = file,http
+default_store = file
+filesystem_store_datadir = /var/lib/glance/images/
