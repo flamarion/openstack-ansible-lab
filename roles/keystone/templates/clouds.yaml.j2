@@ -1,5 +1,5 @@
 clouds:
-  os-admin:
+  {{ cloud }}:
     auth:
       auth_url: http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/
       project_name: admin

@@ -1,0 +1,11 @@
+- name: Restart apache2
+  ansible.builtin.systemd:
+    name: apache2
+    state: restarted
+
+- name: Placement DB sync
+  ansible.builtin.command: "placement-manage db sync"
+  become: true
+  become_user: placement
+  become_method: sudo
+  become_flags: 'su - placement -s /bin/sh -c'

@@ -20,7 +20,7 @@
 
 - name: Create OS glance user
   openstack.cloud.identity_user:
-    cloud: os-admin
+    cloud: "{{ cloud }}"
     description: "Glance Service User"
     state: present
     name: glance
@@ -30,22 +30,23 @@
 
 - name: Assing role admin to glance user in service project
   openstack.cloud.role_assignment:
-    cloud: os-admin
+    cloud: "{{ cloud }}"
     user: glance
     role: admin
     project: service
 
 - name: Create glance service
   openstack.cloud.catalog_service:
-    cloud: os-admin
+    cloud: "{{ cloud }}"
     state: present
     name: glance
     service_type: image
+    is_enabled: true
     description: OpenStack Image Service
 
 - name: Create glance service endpoint
   openstack.cloud.endpoint:
-    cloud: os-admin
+    cloud: "{{ cloud }}"
     service: glance
     endpoint_interface: "{{ item }}"
     url: "http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:9292"
@@ -62,6 +63,8 @@
     state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
   register: glance_installed
+  notify:
+    - Glance DB sync
 
 - name: Glance configuration
   ansible.builtin.template:
@@ -72,6 +75,8 @@
     group: glance
   register: glance_config
   when: glance_installed is succeeded
+  notify:
+    - Restart glance-api
 
 - name: Perform a glance DB sync
   ansible.builtin.command: "glance-manage db_sync"

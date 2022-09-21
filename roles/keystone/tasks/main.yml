@@ -3,7 +3,6 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     name: keystone
     state: present
-  register: keystonedb_created
 
 - name: Create keystone db user
   community.mysql.mysql_user:
@@ -18,7 +17,6 @@
     - localhost
     - "{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}"
     - "{{ groups['controllers'][0] }}"
-  register: keystone_user_grant
 
 - name: Install keystone
   ansible.builtin.apt:
@@ -26,6 +24,8 @@
     state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
   register: keystone_installed
+  notify:
+    - Keystone DB sync
 
 - name: Keystone configuration
   ansible.builtin.template:
@@ -36,6 +36,8 @@
     group: keystone
   register: keystone_config
   when: keystone_installed is succeeded
+  notify:
+    - Restart apache2
 
 - name: Perform a Keystone DB sync
   ansible.builtin.command: "keystone-manage db_sync"
@@ -46,6 +48,7 @@
   args:
     creates: /etc/keystone/keystone_db_synced
   register: keystone_bootstrap
+  when: keystone_config is succeeded
 
 - name: Create lock file after db sync
   ansible.builtin.file:
@@ -122,7 +125,7 @@
 
 - name: Create service project
   openstack.cloud.project:
-    cloud: os-admin
+    cloud: "{{ cloud }}"
     state: present
     name: service
     description: Service project

@@ -1,0 +1,17 @@
+[placement_database]
+connection = mysql+pymysql://placement:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}/placement
+
+[keystone_authtoken]
+www_authenticate_uri = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000
+auth_url = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000
+memcached_servers = {{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:11211
+auth_type = password
+project_domain_name = Default
+user_domain_name = Default
+project_name = service
+username = placement
+password = {{ admin_pass }}
+
+[api]
+auth_strategy = keystone
+

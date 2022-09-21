@@ -2,3 +2,10 @@
   ansible.builtin.systemd:
     name: glance-api
     state: restarted
+
+- name: Glance DB sync
+  ansible.builtin.command: "glance-manage db_sync"
+  become: true
+  become_user: glance
+  become_method: sudo
+  become_flags: 'su - glance -s /bin/sh -c'

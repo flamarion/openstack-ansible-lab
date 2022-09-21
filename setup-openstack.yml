@@ -27,6 +27,7 @@
     - memcached
     - keystone
     - glance
+    - placement
 
 - name: Compute nodes configuration
   hosts: computes

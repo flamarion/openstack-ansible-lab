@@ -2,3 +2,11 @@
   ansible.builtin.systemd:
     name: apache2
     state: restarted
+
+- name: Keystone DB sync
+  ansible.builtin.command: "keystone-manage db_sync"
+  become: true
+  become_user: keystone
+  become_method: sudo
+  become_flags: 'su - keystone -s /bin/sh -c'
+
