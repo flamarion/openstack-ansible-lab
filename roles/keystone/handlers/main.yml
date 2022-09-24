@@ -10,3 +10,16 @@
   become_method: sudo
   become_flags: 'su - keystone -s /bin/sh -c'
 
+- name: Create fernet keys
+  ansible.builtin.command: "keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone"
+
+- name: Create credentials setup
+  ansible.builtin.command: "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
+
+- name: Bootstrap openstack
+  ansible.builtin.command: >
+    keystone-manage bootstrap --bootstrap-password {{ admin_pass }}
+    --bootstrap-admin-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-internal-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-public-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
+    --bootstrap-region-id RegionOne

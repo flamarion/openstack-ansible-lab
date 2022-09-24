@@ -3,3 +3,7 @@ connection = mysql+pymysql://keystone:{{ admin_pass }}@{{ hostvars[groups['contr
 
 [token]
 provider = fernet
+
+[cache]
+enabled=true
+memcache_servers = {{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:11211
