@@ -62,9 +62,6 @@
     name: glance
     state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
-  register: glance_installed
-  notify:
-    - Glance DB sync
 
 - name: Glance configuration
   ansible.builtin.template:
@@ -74,7 +71,6 @@
     owner: glance
     group: glance
   register: glance_config
-  when: glance_installed is succeeded
   notify:
     - Restart glance-api
 
@@ -84,19 +80,11 @@
   become_user: glance
   become_method: sudo
   become_flags: 'su - glance -s /bin/sh -c'
-  args:
-    creates: /etc/glance/glance_db_synced
   register: glance_db_synced
+  changed_when: glance_db_synced.stdout_lines is not search("Database is up to date. No migrations needed.")
   notify:
+    - Glance DB sync
     - Restart glance-api
-
-- name: Create lock file after db sync
-  ansible.builtin.file:
-    path: /etc/glance/glance_db_synced
-    state: touch
-    owner: glance
-    mode: 0644
-  when: glance_db_synced is succeeded
 
 - name: Start glance-api service
   ansible.builtin.systemd:

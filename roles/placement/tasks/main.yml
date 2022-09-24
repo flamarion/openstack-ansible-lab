@@ -62,9 +62,6 @@
     name: placement-api
     state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
-  register: placement_installed
-  notify:
-    - Placement DB sync
 
 - name: Placement configuration
   ansible.builtin.template:
@@ -74,7 +71,6 @@
     owner: placement
     group: placement
   register: placement_config
-  when: placement_installed is succeeded
   notify:
     - Restart apache2
 
@@ -84,19 +80,11 @@
   become_user: placement
   become_method: sudo
   become_flags: 'su - placement -s /bin/sh -c'
-  args:
-    creates: /etc/placement/placement_db_synced
   register: placement_db_synced
+  changed_when: placement_db_synced.stdout is not search("")
   notify:
+    - Placement DB sync
     - Restart apache2
-
-- name: Create lock file after db sync
-  ansible.builtin.file:
-    path: /etc/placement/placement_db_synced
-    state: touch
-    owner: placement
-    mode: 0644
-  when: placement_db_synced is succeeded
 
 - name: Start apache2 service
   ansible.builtin.systemd:
@@ -105,6 +93,7 @@
 
 - name: Checking placement installation
   ansible.builtin.command: "placement-status upgrade check"
+  changed_when: false
   register: check_placement
 
 - name: Placement status

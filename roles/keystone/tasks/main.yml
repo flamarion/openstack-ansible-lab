@@ -39,62 +39,43 @@
   notify:
     - Restart apache2
 
-- name: Perform a Keystone DB sync
-  ansible.builtin.command: "keystone-manage db_sync"
+- name: Perform keystone DB sync
+  ansible.builtin.command: "keystone-manage db_sync --check"
   become: true
   become_user: keystone
   become_method: sudo
   become_flags: 'su - keystone -s /bin/sh -c'
-  args:
-    creates: /etc/keystone/keystone_db_synced
-  register: keystone_bootstrap
-  when: keystone_config is succeeded
-
-- name: Create lock file after db sync
-  ansible.builtin.file:
-    path: /etc/keystone/keystone_db_synced
-    state: touch
-    owner: keystone
-    mode: 0644
-  when: keystone_bootstrap is succeeded
+  register: check_keystone_db_sync
+  changed_when: check_keystone_db_sync.stdout_lines is not search("All db_sync commands are upgraded to the same version and up-to-date.")
+  notify:
+    - Keystone DB sync
 
 - name: Create fernet keys
-  ansible.builtin.command: "{{ item }}"
-  with_items:
-    - "keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone"
-    - "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
-  args:
-    creates: /etc/keystone/fernet_keys_created
+  ansible.builtin.command: "keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone"
   register: fernet_keys_configured
+  changed_when: fernet_keys_configured.stdout_lines is not search("Key repository is already initialized; aborting.")
+  notify:
+    - Create fernet keys
 
-- name: Create lock file after fernet keys configured
-  ansible.builtin.file:
-    path: /etc/keystone/fernet_keys_created
-    state: touch
-    owner: keystone
-    mode: 0644
-  when: fernet_keys_configured is succeeded
+- name: Create credentials setup
+  ansible.builtin.command: "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
+  register: credentials_setup
+  changed_when: credentials_setup.stdout_lines is not search("Key repository is already initialized; aborting.")
+  notify:
+    - Create credentials setup
 
-- name: Bootstrap keyston
+- name: Bootstrap Openstack
   ansible.builtin.command: >
     keystone-manage bootstrap --bootstrap-password {{ admin_pass }}
     --bootstrap-admin-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
     --bootstrap-internal-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
     --bootstrap-public-url http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3/
     --bootstrap-region-id RegionOne
-  args:
-    creates: /etc/keystone/keystone_bootstraped
-  notify:
-    - Restart apache2
   register: openstack_bootstraped
-
-- name: Create lock file after openstack bootstraped
-  ansible.builtin.file:
-    path: /etc/keystone/keystone_bootstraped
-    state: touch
-    owner: keystone
-    mode: 0644
-  when: openstack_bootstraped is succeeded
+  changed_when: openstack_bootstraped.stdout_lines is not search("skipping creation.")
+  notify:
+    - Bootstrap openstack
+    - Restart apache2
 
 - name: Creates openrc file
   ansible.builtin.template:
