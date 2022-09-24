@@ -1,6 +1,5 @@
 ---
-
 collections:
-- name: https://opendev.org/openstack/ansible-collections-openstack
-  version: master
-  type: git
+  - name: https://opendev.org/openstack/ansible-collections-openstack
+    version: master
+    type: git
