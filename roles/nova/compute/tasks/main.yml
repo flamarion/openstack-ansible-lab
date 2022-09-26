@@ -1,0 +1,21 @@
+- name: Install nova compute
+  ansible.builtin.apt:
+    name: nova-compute
+    state: "{{ ('present' if op == 'install') or 'latest' }}"
+    update_cache: true
+
+- name: Nova configuration
+  ansible.builtin.template:
+    src: nova.conf.j2
+    dest: /etc/nova/nova.conf
+    mode: 0640
+    owner: nova
+    group: nova
+  register: nova_config
+  notify:
+    - Restart nova compute
+
+- name: Start nova compute services
+  ansible.builtin.systemd:
+    name: nova-compute
+    state: started
