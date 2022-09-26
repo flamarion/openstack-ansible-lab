@@ -35,7 +35,7 @@
     name: "{{ item }}"
     state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
-  with_items:
+  loop:
     - acl
     - ubuntu-cloud-keyring
   register: keyring_installed

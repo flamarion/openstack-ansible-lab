@@ -10,7 +10,7 @@
         path: /etc/hosts
         line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}\t{{ item }}\t{{ hostvars[item]['ansible_hostname'] }}"
         state: present
-      with_items: "{{ groups['all'] }}"
+      loop: "{{ groups['all'] }}"
 
   roles:
     - common
@@ -28,6 +28,8 @@
     - keystone
     - glance
     - placement
+    - role: nova/controller
+      tags: [nova_controller]
 
 - name: Compute nodes configuration
   hosts: computes

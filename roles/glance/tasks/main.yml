@@ -13,7 +13,7 @@
     password: "{{ admin_pass }}"
     priv:
       "glance.*": "ALL,GRANT"
-  with_items:
+  loop:
     - localhost
     - "{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}"
     - "{{ groups['controllers'][0] }}"
@@ -52,7 +52,7 @@
     url: "http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:9292"
     region: RegionOne
     state: present
-  with_items:
+  loop:
     - admin
     - public
     - internal
