@@ -65,6 +65,7 @@
     - nova-conductor
     - nova-novncproxy
     - nova-scheduler
+    - nova-compute
 
 - name: Nova configuration
   ansible.builtin.template:
@@ -129,3 +130,4 @@
     - nova-scheduler
     - nova-conductor
     - nova-novncproxy
+    - nova-compute

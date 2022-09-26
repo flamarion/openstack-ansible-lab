@@ -1,0 +1,4 @@
+- name: Restart nova compute
+  ansible.builtin.systemd:
+    name: nova-compute
+    state: restarted

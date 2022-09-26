@@ -1,12 +1,6 @@
 [DEFAULT]
-my_ip = {{ hostvars[groups['controllers'][0]]['ansible_default_ipv4']['address'] }}
+my_ip = {{ ansible_default_ipv4['address'] }}
 transport_url = rabbit://openstack:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5672/
-
-[api_database]
-connection = mysql+pymysql://nova:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}/nova_api
-
-[database]
-connection = mysql+pymysql://nova:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}/nova
 
 [api]
 auth_strategy = keystone

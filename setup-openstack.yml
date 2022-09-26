@@ -38,3 +38,5 @@
 
   roles:
     - ntp/client
+    - role: nova/compute
+      tags: [nova_compute]

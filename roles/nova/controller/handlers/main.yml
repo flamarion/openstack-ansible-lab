@@ -7,6 +7,7 @@
     - nova-scheduler
     - nova-conductor
     - nova-novncproxy
+    - nova-compute
 
 - name: Nova API DB sync
   ansible.builtin.command: "nova-manage api_db sync"
