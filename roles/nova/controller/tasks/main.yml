@@ -1,0 +1,131 @@
+- name: Create nova databases
+  community.mysql.mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ item }}"
+    state: present
+  loop: "{{ nova_db }}"
+
+- name: Create nova db user
+  community.mysql.mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+    name: nova
+    host: "{{ item[0]['host'] }}"
+    password: "{{ admin_pass }}"
+    priv: "{{ item[1] }}.*:ALL,GRANT"
+    append_privs: true
+  loop: "{{ nova_db_user_host | subelements('db') }}"
+
+- name: Create OS nova user
+  openstack.cloud.identity_user:
+    cloud: "{{ cloud }}"
+    description: "Nova Service User"
+    state: present
+    name: nova
+    password: "{{ admin_pass }}"
+    domain: default
+    default_project: service
+
+- name: Assing role admin to nova user in service project
+  openstack.cloud.role_assignment:
+    cloud: "{{ cloud }}"
+    user: nova
+    role: admin
+    project: service
+
+- name: Create nova service
+  openstack.cloud.catalog_service:
+    cloud: "{{ cloud }}"
+    state: present
+    name: nova
+    service_type: compute
+    is_enabled: true
+    description: OpenStack Compute
+
+- name: Create nova service endpoint
+  openstack.cloud.endpoint:
+    cloud: "{{ cloud }}"
+    service: nova
+    endpoint_interface: "{{ item }}"
+    url: "http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:8774/v2.1"
+    region: RegionOne
+    state: present
+  loop:
+    - admin
+    - public
+    - internal
+
+- name: Install nova
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: "{{ ('present' if op == 'install') or 'latest' }}"
+    update_cache: true
+  loop:
+    - nova-api
+    - nova-conductor
+    - nova-novncproxy
+    - nova-scheduler
+
+- name: Nova configuration
+  ansible.builtin.template:
+    src: nova.conf.j2
+    dest: /etc/nova/nova.conf
+    mode: 0640
+    owner: nova
+    group: nova
+  register: nova_config
+  notify:
+    - Restart nova
+
+- name: Nova API DB sync
+  ansible.builtin.command: "nova-manage api_db sync"
+  become: true
+  become_user: nova
+  become_method: sudo
+  become_flags: "su - nova -s /bin/sh -c"
+  register: nova_api_db_synced
+  changed_when: nova_api_db_synced.stdout_lines is not search("Will assume non-transactional DDL")
+  notify:
+    - Nova API DB sync
+    - Restart nova
+
+- name: Nova map cell0
+  ansible.builtin.command: "nova-manage cell_v2 map_cell0"
+  become: true
+  become_user: nova
+  become_method: sudo
+  become_flags: "su - nova -s /bin/sh -c"
+  register: nova_cell0_mapped
+  changed_when: nova_cell0_mapped.stdout is not search("Cell0 is already setup")
+
+- name: Nova create cell1
+  ansible.builtin.command: "nova-manage cell_v2 create_cell --name=cell1 --verbose"
+  become: true
+  become_user: nova
+  become_method: sudo
+  become_flags: "su - nova -s /bin/sh -c"
+  register: nova_cell1_created
+  changed_when: nova_cell1_created.stdout is not search("combination already exists for another cell")
+  ignore_errors: true
+
+- name: Nova DB sync
+  ansible.builtin.command: "nova-manage db sync"
+  become: true
+  become_user: nova
+  become_method: sudo
+  become_flags: "su - nova -s /bin/sh -c"
+  register: nova_db_synced
+  changed_when: nova_db_synced.stdout_lines is not search("Will assume non-transactional DDL")
+  notify:
+    - Nova DB sync
+    - Restart nova
+
+- name: Start nova services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+  loop:
+    - nova-api
+    - nova-scheduler
+    - nova-conductor
+    - nova-novncproxy

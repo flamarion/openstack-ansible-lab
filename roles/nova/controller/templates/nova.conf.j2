@@ -1,0 +1,44 @@
+[DEFAULT]
+my_ip = {{ hostvars[groups['controllers'][0]]['ansible_default_ipv4']['address'] }}
+transport_url = rabbit://openstack:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5672/
+
+[api_database]
+connection = mysql+pymysql://nova:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}/nova_api
+
+[database]
+connection = mysql+pymysql://nova:{{ admin_pass }}@{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}/nova
+
+[api]
+auth_strategy = keystone
+
+[keystone_authtoken]
+www_authenticate_uri = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/
+auth_url = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/
+memcached_servers = {{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:11211
+auth_type = password
+project_domain_name = Default
+user_domain_name = Default
+project_name = service
+username = nova
+password = {{ admin_pass }}
+
+[vnc]
+enabled = true
+server_listen = $my_ip
+server_proxyclient_address = $my_ip
+
+[glance]
+api_servers = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:9292
+
+[oslo_concurrency]
+lock_path = /var/lib/nova/tmp
+
+[placement]
+region_name = RegionOne
+project_domain_name = Default
+project_name = service
+auth_type = password
+user_domain_name = Default
+auth_url = http://{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}:5000/v3
+username = placement
+password = {{ admin_pass }}

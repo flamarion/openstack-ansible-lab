@@ -1,0 +1,9 @@
+nova_db:
+  - nova_api
+  - nova
+  - nova_cell0
+
+nova_db_user_host:
+  - { host: localhost, db: "{{ nova_db }}" }
+  - { host: "{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}", db: "{{ nova_db }}"}
+  - { host: "{{ groups['controllers'][0] }}", db: "{{ nova_db }}"}

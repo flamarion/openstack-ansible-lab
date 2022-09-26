@@ -13,7 +13,7 @@
     password: "{{ admin_pass }}"
     priv:
       "keystone.*": "ALL,GRANT"
-  with_items:
+  loop:
     - localhost
     - "{{ hostvars[groups['controllers'][0]]['ansible_hostname'] }}"
     - "{{ groups['controllers'][0] }}"

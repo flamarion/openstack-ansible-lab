@@ -4,7 +4,7 @@
     name: "{{ item }}"
     state: "{{ ('present' if op == 'install') or 'latest' }}"
     update_cache: true
-  with_items:
+  loop:
     - mariadb-server
     - python3-pymysql
 - name: Deploy Mariadb Openstack configuration
